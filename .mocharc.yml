@@ -1,0 +1,5 @@
+---
+ui: tdd
+timeout: 30
+reporter: spec
+exit: true
