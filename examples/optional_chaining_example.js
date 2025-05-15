@@ -1,7 +1,8 @@
 /**
- * 可选链操作符（?.）使用示例
+ * 可选链操作符（?.）和空值合并运算符（??）使用示例
  *
- * 本示例展示了如何在 JSON-e 模板中使用可选链操作符来安全地访问嵌套属性
+ * 本示例展示了如何在 JSON-e 模板中使用可选链操作符和空值合并运算符
+ * 来安全地访问嵌套属性并提供默认值
  */
 
 /* eslint-disable no-console, no-undef */
@@ -198,3 +199,104 @@ const context7 = {
 // 使用相同的模板
 const result7 = jsone(template6, context7);
 console.log(result7);
+console.log('-----------------------------------');
+
+// 示例 7: 空值合并运算符基本用法
+console.log('示例 7: 空值合并运算符基本用法');
+
+// 定义上下文
+const context8 = {
+  data: {
+    user: {
+      name: "张三",
+      settings: {
+        theme: null,
+        language: undefined
+      }
+    }
+  }
+};
+
+// 定义模板
+const template7 = {
+  // 使用空值合并运算符提供默认值
+  userName: { $eval: "data.user.name ?? '默认用户'" },
+  theme: { $eval: "data.user.settings.theme ?? '默认主题'" },
+  language: { $eval: "data.user.settings.language ?? '默认语言'" }
+};
+
+// 渲染模板
+const result8 = jsone(template7, context8);
+console.log(result8);
+console.log('-----------------------------------');
+
+// 示例 8: 空值合并运算符与可选链操作符结合使用
+console.log('示例 8: 空值合并运算符与可选链操作符结合使用');
+
+// 定义上下文
+const context9 = {
+  data: {
+    // 注意：没有 user 对象
+  }
+};
+
+// 定义模板
+const template8 = {
+  // 使用可选链操作符安全地访问属性，并使用空值合并运算符提供默认值
+  userName: { $eval: "data?.user?.name ?? '默认用户'" },
+  age: { $eval: "data?.user?.age ?? 25" }
+};
+
+// 渲染模板
+const result9 = jsone(template8, context9);
+console.log(result9);
+console.log('-----------------------------------');
+
+// 示例 9: 空值合并运算符处理不同类型的假值
+console.log('示例 9: 空值合并运算符处理不同类型的假值');
+
+// 定义上下文
+const context10 = {
+  settings: {
+    showNotifications: false,
+    volume: 0,
+    username: ""
+  }
+};
+
+// 定义模板
+const template9 = {
+  // 注意：空值合并运算符只对 null 和 undefined 生效
+  notifications: { $eval: "settings.showNotifications ?? true" },
+  volume: { $eval: "settings.volume ?? 100" },
+  username: { $eval: "settings.username ?? '匿名用户'" }
+};
+
+// 渲染模板
+const result10 = jsone(template9, context10);
+console.log(result10);
+console.log('-----------------------------------');
+
+// 示例 10: 空值合并运算符链式使用
+console.log('示例 10: 空值合并运算符链式使用');
+
+// 定义上下文
+const context11 = {
+  preferences: null,
+  defaults: {
+    theme: null
+  },
+  system: {
+    theme: "暗色"
+  }
+};
+
+// 定义模板
+const template10 = {
+  // 依次尝试 preferences.theme、defaults.theme 和 system.theme
+  theme: { $eval: "preferences?.theme ?? defaults?.theme ?? system?.theme ?? '默认主题'" }
+};
+
+// 渲染模板
+const result11 = jsone(template10, context11);
+console.log(result11);

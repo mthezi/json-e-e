@@ -13,7 +13,7 @@ class Parser {
         this.current_token = this._tokenizer.next(this._source, offset);
         this.unaryOpTokens = ["-", "+", "!"];
         this.primitivesTokens = ["number", "null", "true", "false", "string"];
-        this.operations = [["||"], ["&&"], ["in"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/"], ["**"]];
+        this.operations = [["||"], ["&&"], ["??"], ["in"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/"], ["**"]];
         this.expectedTokens = ["!", "(", "+", "-", "[", "false", "identifier", "null", "number", "string", "true", "{"];
 
     }
