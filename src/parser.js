@@ -66,7 +66,7 @@ class Parser {
 
     parsePropertyAccessOrFunc() {
         let node = this.parseUnit();
-        let operators = ["[", "(", "."];
+        let operators = ["[", "(", ".", "?."];
         let rightPart;
         for (let token = this.current_token; token != null && operators.indexOf(token.kind) !== -1; token = this.current_token) {
             if (token.kind == "[") {
@@ -74,6 +74,12 @@ class Parser {
             } else if (token.kind == ".") {
                 token = this.current_token;
                 this.takeToken(".");
+                rightPart = new Primitive(this.current_token);
+                this.takeToken("identifier");
+                node = new BinOp(token, node, rightPart)
+            } else if (token.kind == "?.") {
+                token = this.current_token;
+                this.takeToken("?.");
                 rightPart = new Primitive(this.current_token);
                 this.takeToken("identifier");
                 node = new BinOp(token, node, rightPart)

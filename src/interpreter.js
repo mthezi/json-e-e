@@ -1,6 +1,9 @@
 const {isFunction, isObject, isString, isArray, isNumber, isInteger, isTruthy} = require("../src/type-utils");
 const {InterpreterError} = require('./error');
 
+// 定义特殊符号，表示可选链操作符返回的null
+const OPTIONAL_CHAIN_NULL = Symbol('OPTIONAL_CHAIN_NULL');
+
 let expectationError = (operator, expectation) => new InterpreterError(`${operator} expects ${expectation}`);
 
 class Interpreter {
@@ -100,13 +103,39 @@ class Interpreter {
                 testMathOperands("**", left, right);
                 return Math.pow(right, left);
             case ("."): {
+                // 如果左侧是可选链操作符返回的null，直接返回特殊值
+                if (left === OPTIONAL_CHAIN_NULL) {
+                    return OPTIONAL_CHAIN_NULL;
+                }
+                
+                // 如果左侧为null或undefined，抛出错误
+                if (left === null || left === undefined) {
+                    throw new InterpreterError(`cannot access property "${right}" of null or undefined`);
+                }
+                
                 if (isObject(left)) {
                     if (left.hasOwnProperty(right)) {
                         return left[right];
                     }
+                    // 属性不存在时抛出错误
                     throw new InterpreterError(`object has no property "${right}"`);
                 }
                 throw expectationError('infix: .', 'objects');
+            }
+            case ("?."): {
+                // 如果左侧为null或undefined，或者是特殊值，返回特殊值
+                if (left === null || left === undefined || left === OPTIONAL_CHAIN_NULL) {
+                    return OPTIONAL_CHAIN_NULL;
+                }
+                
+                if (isObject(left)) {
+                    if (left.hasOwnProperty(right)) {
+                        return left[right];
+                    }
+                    // 属性不存在时返回特殊值
+                    return OPTIONAL_CHAIN_NULL;
+                }
+                throw expectationError('infix: ?.', 'objects');
             }
             case ("in"): {
                 if (isObject(right)) {
@@ -141,6 +170,17 @@ class Interpreter {
 
     visit_ValueAccess(node) {
         let array = this.visit(node.arr);
+        
+        // 如果array是可选链操作符返回的null，直接返回特殊值
+        if (array === OPTIONAL_CHAIN_NULL) {
+            return OPTIONAL_CHAIN_NULL;
+        }
+        
+        // 如果array为undefined或null，直接返回null
+        if (array === undefined || array === null) {
+            return null;
+        }
+        
         let left = 0, right = null;
 
         if (node.left) {
@@ -216,13 +256,20 @@ class Interpreter {
             let contextValue = this.context[node.token.value];
             return contextValue
         }
-        throw new InterpreterError(`unknown context value ${node.token.value}`);
+        // 当上下文值不存在时返回null，而不是抛出错误
+        return null;
     }
 
     visit_FunctionCall(node) {
         let args = [];
 
         let funcName = this.visit(node.name);
+        
+        // 如果funcName是可选链操作符返回的null，直接返回特殊值
+        if (funcName === OPTIONAL_CHAIN_NULL) {
+            return OPTIONAL_CHAIN_NULL;
+        }
+        
         if (isFunction(funcName)) {
             node.args.forEach(function (item) {
                 args.push(this.visit(item))
@@ -247,7 +294,12 @@ class Interpreter {
     }
 
     interpret(tree) {
-        return this.visit(tree);
+        let result = this.visit(tree);
+        // 如果结果是可选链操作符返回的null，转换为实际的null
+        if (result === OPTIONAL_CHAIN_NULL) {
+            return null;
+        }
+        return result;
     }
 }
 

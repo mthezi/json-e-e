@@ -602,6 +602,7 @@ let tokenizer = new Tokenizer({
   },
   tokens: [
     "**",
+    "?.",  // 添加可选链操作符
     ..."+-*/[].(){}:,".split(""),
     ">=",
     "<=",
