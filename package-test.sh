@@ -8,5 +8,5 @@ trap "{ rm -rf $tmpdir; }" EXIT
 cd $tmpdir
 npm pack $orig_dir
 npm init -y
-npm install json-e-*.tgz
-node -e 'console.log(require("json-e")({"success": true}, {}))'
+npm install json-e-e-*.tgz
+node -e 'console.log(require("json-e-e")({"success": true}, {}))'
