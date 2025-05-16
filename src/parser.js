@@ -13,7 +13,7 @@ class Parser {
         this.current_token = this._tokenizer.next(this._source, offset);
         this.unaryOpTokens = ["-", "+", "!"];
         this.primitivesTokens = ["number", "null", "true", "false", "string"];
-        this.operations = [["||"], ["&&"], ["??"], ["in"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/"], ["**"]];
+        this.operations = [["||"], ["&&"], ["??"], ["?"], ["in"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/"], ["**"]];
         this.expectedTokens = ["!", "(", "+", "-", "[", "false", "identifier", "null", "number", "string", "true", "{"];
 
     }
@@ -42,6 +42,7 @@ class Parser {
         //addition : multiplication (PLUS | MINUS multiplication)* "
         //multiplication : exponentiation (MUL | DIV exponentiation)*
         //exponentiation : propertyAccessOrFunc (EXP exponentiation)*
+        //ternary : condition ? trueExpr : falseExpr
         let node;
         if (level == this.operations.length - 1) {
             node = this.parsePropertyAccessOrFunc();
@@ -50,6 +51,28 @@ class Parser {
             for (; token != null && this.operations[level].indexOf(token.kind) !== -1; token = this.current_token) {
                 this.takeToken(token.kind);
                 node = new BinOp(token, this.parse(level), node);
+            }
+        } else if (level == 3 && this.operations[level].indexOf("?") !== -1) {
+            // 处理三目运算符 condition ? trueExpr : falseExpr
+            node = this.parse(level + 1);
+            if (this.current_token && this.current_token.kind === "?") {
+                let questionToken = this.current_token;
+                this.takeToken("?");
+                let trueExpr = this.parse(level + 1);  // 解析 ? 后面的表达式，使用相同的优先级
+                
+                if (!this.current_token || this.current_token.kind !== ":") {
+                    throw new SyntaxError("Expected ':' in ternary operator", this.current_token);
+                }
+                
+                this.takeToken(":");
+                let falseExpr = this.parse(level + 1);  // 解析 : 后面的表达式
+                
+                // 创建一个特殊的三目运算符节点
+                node = new BinOp(questionToken, node, {
+                    trueExpr: trueExpr,
+                    falseExpr: falseExpr,
+                    isTernary: true
+                });
             }
         } else {
             node = this.parse(level + 1);

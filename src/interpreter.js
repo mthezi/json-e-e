@@ -56,6 +56,19 @@ class Interpreter {
     visit_BinOp(node) {
         let left = this.visit(node.left);
         let right;
+        
+        // 处理三目运算符
+        if (node.token.kind === "?" && node.right && node.right.isTernary) {
+            // 如果条件为真，计算并返回第一个表达式的值
+            if (isTruthy(left)) {
+                return this.visit(node.right.trueExpr);
+            }
+            // 否则，计算并返回第二个表达式的值
+            else {
+                return this.visit(node.right.falseExpr);
+            }
+        }
+        
         switch (node.token.kind) {
             case ("||"):
                 return isTruthy(left) || isTruthy(this.visit(node.right));

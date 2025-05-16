@@ -118,8 +118,13 @@ module.exports = (context) => {
   });
 
   define('len', builtins, {
-    argumentTests: ['string|array'],
-    invoke: obj => Array.from(obj).length,
+    argumentTests: ['string|array|object'],
+    invoke: obj => {
+      if (isObject(obj)) {
+        return Object.keys(obj).length;
+      }
+      return Array.from(obj).length;
+    },
   });
 
   define('strip', builtins, {

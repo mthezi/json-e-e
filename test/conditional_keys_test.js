@@ -109,4 +109,19 @@ suite('Conditional Keys', function() {
       }
     });
   });
+
+  test('len 函数支持对象类型', function() {
+    let template = {
+      "emptyObject": { $eval: "len({})" },
+      "objectWithOneKey": { $eval: "len({key: 'value'})" },
+      "objectWithMultipleKeys": { $eval: "len({a: 1, b: 2, c: 3})" }
+    };
+    
+    let result = jsone(template, {});
+    assert.deepEqual(result, {
+      emptyObject: 0,
+      objectWithOneKey: 1,
+      objectWithMultipleKeys: 3
+    });
+  });
 }); 
