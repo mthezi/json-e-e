@@ -1,4 +1,4 @@
-const {UnaryOp, BinOp, Primitive, ContextValue, FunctionCall, ValueAccess, List, Object} = require("../src/AST");
+const {UnaryOp, BinOp, Primitive, ContextValue, FunctionCall, ValueAccess, List, Object, Lambda} = require("../src/AST");
 const {SyntaxError} = require('./error');
 
 let syntaxRuleError = (token, expects) => {
@@ -13,7 +13,7 @@ class Parser {
         this.current_token = this._tokenizer.next(this._source, offset);
         this.unaryOpTokens = ["-", "+", "!"];
         this.primitivesTokens = ["number", "null", "true", "false", "string"];
-        this.operations = [["||"], ["&&"], ["??"], ["?"], ["in"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/"], ["**"]];
+        this.operations = [["||"], ["&&"], ["??"], ["?"], ["in"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/", "%"], ["**"]];
         this.expectedTokens = ["!", "(", "+", "-", "[", "false", "identifier", "null", "number", "string", "true", "{"];
 
     }
@@ -115,7 +115,7 @@ class Parser {
 
 
     parseUnit() {
-        // unit : unaryOp unit | primitives | contextValue | LPAREN expr RPAREN | list | object
+        // unit : unaryOp unit | primitives | contextValue | LPAREN expr RPAREN | list | object | lambda
         let token = this.current_token;
         let node;
         let isUnaryOpToken = this.unaryOpTokens.indexOf(token.kind) !== -1;
@@ -130,21 +130,164 @@ class Parser {
             this.takeToken(token.kind);
             node = new Primitive(token);
         } else if (token.kind == "identifier") {
-            this.takeToken(token.kind);
-            node = new ContextValue(token);
-        } else if (token.kind == "(") {
-            this.takeToken("(");
-            node = this.parse();
-            if (node == null) {
-                throw syntaxRuleError(this.current_token, this.expectedTokens);
+            // 检查是否是箭头函数的参数
+            if (this.checkLambda()) {
+                node = this.parseLambda();
+            } else {
+                this.takeToken(token.kind);
+                node = new ContextValue(token);
             }
-            this.takeToken(")");
+        } else if (token.kind == "(") {
+            // 检查是否是箭头函数的参数列表
+            if (this.checkLambdaWithParamList()) {
+                node = this.parseLambdaWithParamList();
+            } else {
+                this.takeToken("(");
+                node = this.parse();
+                if (node == null) {
+                    throw syntaxRuleError(this.current_token, this.expectedTokens);
+                }
+                this.takeToken(")");
+            }
         } else if (token.kind == "[") {
             node = this.parseList();
         } else if (token.kind == "{") {
             node = this.parseObject();
         }
         return node
+    }
+
+    // 检查是否是单参数箭头函数
+    checkLambda() {
+        if (this.current_token && this.current_token.kind === "identifier") {
+            // 保存当前位置
+            const currentToken = this.current_token;
+            
+            // 尝试向前看一个token
+            try {
+                this.takeToken("identifier");
+                const nextToken = this.current_token;
+                
+                // 恢复位置
+                this.current_token = currentToken;
+                
+                // 检查下一个token是否为箭头
+                return nextToken && nextToken.kind === "=>";
+            } catch (e) {
+                // 恢复位置
+                this.current_token = currentToken;
+                return false;
+            }
+        }
+        return false;
+    }
+
+    // 检查是否是带参数列表的箭头函数
+    checkLambdaWithParamList() {
+        if (this.current_token && this.current_token.kind === "(") {
+            // 保存当前位置
+            const currentToken = this.current_token;
+            
+            try {
+                // 跳过左括号
+                this.takeToken("(");
+                
+                // 跳过参数
+                while (this.current_token && this.current_token.kind !== ")") {
+                    if (this.current_token.kind !== "identifier") {
+                        // 不是有效的参数
+                        this.current_token = currentToken;
+                        return false;
+                    }
+                    this.takeToken("identifier");
+                    
+                    // 如果有逗号，跳过
+                    if (this.current_token && this.current_token.kind === ",") {
+                        this.takeToken(",");
+                    } else {
+                        break;
+                    }
+                }
+                
+                // 检查是否有右括号
+                if (!this.current_token || this.current_token.kind !== ")") {
+                    this.current_token = currentToken;
+                    return false;
+                }
+                this.takeToken(")");
+                
+                // 检查是否有箭头
+                const hasArrow = this.current_token && this.current_token.kind === "=>";
+                
+                // 恢复位置
+                this.current_token = currentToken;
+                return hasArrow;
+            } catch (e) {
+                // 恢复位置
+                this.current_token = currentToken;
+                return false;
+            }
+        }
+        return false;
+    }
+
+    // 解析单参数箭头函数
+    parseLambda() {
+        const token = this.current_token;
+        
+        // 解析参数
+        const param = this.current_token.value;
+        this.takeToken("identifier");
+        
+        // 解析箭头
+        this.takeToken("=>");
+        
+        // 解析函数体
+        const body = this.parse();
+        
+        return new Lambda(token, [param], body);
+    }
+
+    // 解析带参数列表的箭头函数
+    parseLambdaWithParamList() {
+        const token = this.current_token;
+        const params = [];
+        
+        // 解析左括号
+        this.takeToken("(");
+        
+        // 解析参数列表
+        if (this.current_token && this.current_token.kind !== ")") {
+            // 解析第一个参数
+            if (this.current_token.kind === "identifier") {
+                params.push(this.current_token.value);
+                this.takeToken("identifier");
+            } else {
+                throw syntaxRuleError(this.current_token, ["identifier"]);
+            }
+            
+            // 解析其余参数
+            while (this.current_token && this.current_token.kind === ",") {
+                this.takeToken(",");
+                if (this.current_token.kind === "identifier") {
+                    params.push(this.current_token.value);
+                    this.takeToken("identifier");
+                } else {
+                    throw syntaxRuleError(this.current_token, ["identifier"]);
+                }
+            }
+        }
+        
+        // 解析右括号
+        this.takeToken(")");
+        
+        // 解析箭头
+        this.takeToken("=>");
+        
+        // 解析函数体
+        const body = this.parse();
+        
+        return new Lambda(token, params, body);
     }
 
     parseFunctionCall(name) {

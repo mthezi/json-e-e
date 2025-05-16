@@ -15,6 +15,7 @@ let types = {
   object: isObject,
   null: isNull,
   function: isFunction,
+  undefined: (val) => typeof val === 'undefined',
 };
 
 let builtinError = (builtin) => new BuiltinError(`invalid arguments to ${builtin}`);
@@ -77,6 +78,27 @@ module.exports = (context) => {
       argumentTests: ['number'],
       invoke: num => Math[name](num),
     });
+  });
+
+  // More math functions
+  ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'log', 'log10', 'exp', 'round'].forEach(name => {
+    if (Math[name] == undefined) {
+      throw new Error(`${name} in Math undefined`);
+    }
+    define(name, builtins, {
+      argumentTests: ['number'],
+      invoke: num => Math[name](num),
+    });
+  });
+
+  define('pow', builtins, {
+    argumentTests: ['number', 'number'],
+    invoke: (base, exponent) => Math.pow(base, exponent),
+  });
+
+  define('random', builtins, {
+    argumentTests: [],
+    invoke: () => Math.random(),
   });
 
   define('range', builtins, {
@@ -153,7 +175,194 @@ module.exports = (context) => {
     invoke: (list, separator) => list.join(separator) 
   });
 
-  // Miscellaneous
+  // New string functions
+  define('replace', builtins, {
+    argumentTests: ['string', 'string', 'string'],
+    invoke: (str, search, replace) => str.replace(new RegExp(search, 'g'), replace),
+  });
+
+  define('replaceFirst', builtins, {
+    argumentTests: ['string', 'string', 'string'],
+    invoke: (str, search, replace) => str.replace(new RegExp(search), replace),
+  });
+
+  define('substring', builtins, {
+    argumentTests: ['string', 'number', 'number'],
+    invoke: (str, start, end) => str.substring(start, end),
+  });
+
+  define('startsWith', builtins, {
+    argumentTests: ['string', 'string'],
+    invoke: (str, prefix) => str.startsWith(prefix),
+  });
+
+  define('endsWith', builtins, {
+    argumentTests: ['string', 'string'],
+    invoke: (str, suffix) => str.endsWith(suffix),
+  });
+
+  define('includes', builtins, {
+    argumentTests: ['string', 'string'],
+    invoke: (str, search) => str.includes(search),
+  });
+
+  define('padLeft', builtins, {
+    argumentTests: ['string', 'number', 'string'],
+    invoke: (str, length, char = ' ') => str.padStart(length, char),
+  });
+
+  define('padRight', builtins, {
+    argumentTests: ['string', 'number', 'string'],
+    invoke: (str, length, char = ' ') => str.padEnd(length, char),
+  });
+
+  // Array functions
+  define('map', builtins, {
+    argumentTests: ['array', 'function'],
+    invoke: (arr, fn) => {
+      if (fn.jsone_builtin === false) {
+        return arr.map(item => fn(item));
+      }
+      return arr.map(item => fn(null, item));
+    },
+  });
+
+  define('filter', builtins, {
+    argumentTests: ['array', 'function'],
+    invoke: (arr, fn) => {
+      if (fn.jsone_builtin === false) {
+        return arr.filter(item => fn(item));
+      }
+      return arr.filter(item => fn(null, item));
+    },
+  });
+
+  define('reduce', builtins, {
+    argumentTests: ['array', 'function', 'string|number|boolean|array|object|null'],
+    invoke: (arr, fn, initial) => {
+      if (fn.jsone_builtin === false) {
+        return arr.reduce((acc, item) => fn(acc, item), initial);
+      }
+      return arr.reduce((acc, item) => fn(null, acc, item), initial);
+    },
+  });
+
+  define('some', builtins, {
+    argumentTests: ['array', 'function'],
+    invoke: (arr, fn) => {
+      if (fn.jsone_builtin === false) {
+        return arr.some(item => fn(item));
+      }
+      return arr.some(item => fn(null, item));
+    },
+  });
+
+  define('every', builtins, {
+    argumentTests: ['array', 'function'],
+    invoke: (arr, fn) => {
+      if (fn.jsone_builtin === false) {
+        return arr.every(item => fn(item));
+      }
+      return arr.every(item => fn(null, item));
+    },
+  });
+
+  define('find', builtins, {
+    argumentTests: ['array', 'function'],
+    invoke: (arr, fn) => {
+      if (fn.jsone_builtin === false) {
+        return arr.find(item => fn(item));
+      }
+      return arr.find(item => fn(null, item));
+    },
+  });
+
+  define('findIndex', builtins, {
+    argumentTests: ['array', 'function'],
+    invoke: (arr, fn) => {
+      if (fn.jsone_builtin === false) {
+        return arr.findIndex(item => fn(item));
+      }
+      return arr.findIndex(item => fn(null, item));
+    },
+  });
+
+  define('slice', builtins, {
+    argumentTests: ['array', 'number', 'number'],
+    invoke: (arr, start, end) => arr.slice(start, end),
+  });
+
+  define('flatten', builtins, {
+    argumentTests: ['array'],
+    invoke: arr => [].concat(...arr),
+  });
+
+  define('sort', builtins, {
+    argumentTests: ['array'],
+    invoke: arr => [...arr].sort(),
+  });
+
+  define('sortBy', builtins, {
+    argumentTests: ['array', 'function'],
+    invoke: (arr, fn) => {
+      if (fn.jsone_builtin === false) {
+        return [...arr].sort((a, b) => {
+          const valA = fn(a);
+          const valB = fn(b);
+          if (valA < valB) return -1;
+          if (valA > valB) return 1;
+          return 0;
+        });
+      }
+      return [...arr].sort((a, b) => {
+        const valA = fn(null, a);
+        const valB = fn(null, b);
+        if (valA < valB) return -1;
+        if (valA > valB) return 1;
+        return 0;
+      });
+    },
+  });
+
+  define('reverse', builtins, {
+    argumentTests: ['array'],
+    invoke: arr => [...arr].reverse(),
+  });
+
+  // Object functions
+  define('keys', builtins, {
+    argumentTests: ['object'],
+    invoke: obj => Object.keys(obj),
+  });
+
+  define('values', builtins, {
+    argumentTests: ['object'],
+    invoke: obj => Object.values(obj),
+  });
+
+  define('entries', builtins, {
+    argumentTests: ['object'],
+    invoke: obj => Object.entries(obj).map(([k, v]) => ({key: k, value: v})),
+  });
+
+  define('merge', builtins, {
+    minArgs: 2,
+    argumentTests: ['object', 'object'],
+    variadic: 'object',
+    invoke: (...objs) => Object.assign({}, ...objs),
+  });
+
+  define('hasKey', builtins, {
+    argumentTests: ['object', 'string'],
+    invoke: (obj, key) => obj.hasOwnProperty(key),
+  });
+
+  // Date and time functions
+  define('now', builtins, {
+    argumentTests: [],
+    invoke: () => new Date().toISOString(),
+  });
+
   define('fromNow', builtins, {
     variadic: 'string',
     minArgs: 1,
@@ -161,6 +370,30 @@ module.exports = (context) => {
     invoke: (ctx, str, reference) => fromNow(str, reference || ctx.now),
   });
 
+  define('parseTime', builtins, {
+    argumentTests: ['string'],
+    invoke: str => new Date(str).getTime(),
+  });
+
+  define('formatDate', builtins, {
+    argumentTests: ['string', 'string'],
+    invoke: (dateStr, format) => {
+      const date = new Date(dateStr);
+      return format.replace(/yyyy|MM|dd|HH|mm|ss/g, match => {
+        switch (match) {
+          case 'yyyy': return date.getFullYear().toString();
+          case 'MM': return (date.getMonth() + 1).toString().padStart(2, '0');
+          case 'dd': return date.getDate().toString().padStart(2, '0');
+          case 'HH': return date.getHours().toString().padStart(2, '0');
+          case 'mm': return date.getMinutes().toString().padStart(2, '0');
+          case 'ss': return date.getSeconds().toString().padStart(2, '0');
+          default: return match;
+        }
+      });
+    },
+  });
+
+  // Type conversion/checking functions
   define('typeof', builtins, {
     argumentTests: ['string|number|boolean|array|object|null|function'],
     invoke: x => {
@@ -180,6 +413,65 @@ module.exports = (context) => {
     argumentTests: ['string'],
     needsContext: true,
     invoke: (ctx, str) => ctx.hasOwnProperty(str)
+  });
+
+  define('boolean', builtins, {
+    argumentTests: ['string|number|boolean|array|object|null'],
+    invoke: val => Boolean(val),
+  });
+
+  define('json', builtins, {
+    argumentTests: ['object|array|string|number|boolean|null'],
+    invoke: val => JSON.stringify(val),
+  });
+
+  define('parseJSON', builtins, {
+    argumentTests: ['string'],
+    invoke: str => {
+      try {
+        return JSON.parse(str);
+      } catch (e) {
+        throw builtinError('builtin: parseJSON', `invalid JSON string: ${e.message}`);
+      }
+    },
+  });
+
+  // Regular expression functions
+  define('match', builtins, {
+    argumentTests: ['string', 'string'],
+    invoke: (str, pattern) => {
+      const regex = new RegExp(pattern);
+      const match = str.match(regex);
+      return match ? match[0] : null;
+    },
+  });
+
+  define('matchAll', builtins, {
+    argumentTests: ['string', 'string'],
+    invoke: (str, pattern) => {
+      const regex = new RegExp(pattern, 'g');
+      const matches = [...str.matchAll(regex)];
+      return matches.map(match => match[0]);
+    },
+  });
+
+  define('test', builtins, {
+    argumentTests: ['string', 'string'],
+    invoke: (str, pattern) => new RegExp(pattern).test(str),
+  });
+
+  // 新增 toArray 函数
+  define('toArray', builtins, {
+    argumentTests: ['string|number|boolean|array|object|null|undefined'],
+    invoke: item => {
+      if (isArray(item)) {
+        return item;
+      }
+      if (item === null || item === undefined) {
+        return [];
+      }
+      return [item];
+    },
   });
 
   return Object.assign({}, builtins, context);

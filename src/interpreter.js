@@ -85,39 +85,82 @@ class Interpreter {
 
         switch (node.token.kind) {
             case ("+"):
+                // 特殊处理：左操作数或右操作数是未定义变量，可能是在 Lambda 函数体中
+                if (left === null || right === null) {
+                    return null;
+                }
                 testMathOperands("+", left, right);
                 return left + right;
             case ("-"):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testMathOperands("-", left, right);
                 return left - right;
             case ("/"):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testMathOperands("/", left, right);
                 if (right == 0) {
                     throw new InterpreterError("division by zero");
                 }
                 return left / right;
             case ("*"):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testMathOperands("*", left, right);
                 return left * right;
+            case ("%"):
+                if (left === null || right === null) {
+                    return null;
+                }
+                testMathOperands("%", left, right);
+                if (right == 0) {
+                    throw new InterpreterError("division by zero in modulo operation");
+                }
+                return left % right;
             case (">"):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testComparisonOperands(">", left, right);
                 return left > right;
             case ("<"):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testComparisonOperands("<", left, right);
                 return left < right;
             case (">="):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testComparisonOperands(">=", left, right);
                 return left >= right;
             case ("<="):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testComparisonOperands("<=", left, right);
                 return left <= right;
             case ("!="):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testComparisonOperands("!=", left, right);
                 return !isEqual(left, right);
             case ("=="):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testComparisonOperands("==", left, right);
                 return isEqual(left, right);
             case ("**"):
+                if (left === null || right === null) {
+                    return null;
+                }
                 testMathOperands("**", left, right);
                 return Math.pow(right, left);
             case ("."): {
@@ -156,6 +199,9 @@ class Interpreter {
                 throw expectationError('infix: ?.', 'objects');
             }
             case ("in"): {
+                if (left === null || right === null) {
+                    return null;
+                }
                 if (isObject(right)) {
                     if (!isString(left)) {
                         throw expectationError('Infix: in-object', 'string on left side');
@@ -311,6 +357,34 @@ class Interpreter {
         return obj
     }
 
+    visit_Lambda(node) {
+        const params = node.params;
+        const body = node.body;
+        const context = this.context;
+        
+        // 创建一个新的函数，该函数在调用时会执行Lambda表达式的主体
+        const lambdaFunction = function(...args) {
+            // 创建一个新的上下文，包含原始上下文和参数绑定
+            const newContext = Object.assign({}, context);
+            
+            // 将参数绑定到参数名
+            params.forEach((param, index) => {
+                if (index < args.length) {
+                    newContext[param] = args[index];
+                }
+            });
+            
+            // 使用新的上下文解释函数体
+            const interpreter = new Interpreter(newContext);
+            return interpreter.visit(body);
+        };
+        
+        // 标记为内置函数，以便在调用时能够正确处理
+        lambdaFunction.jsone_builtin = false;
+        
+        return lambdaFunction;
+    }
+
     interpret(tree) {
         let result = this.visit(tree);
         // 如果结果是可选链操作符返回的null，转换为实际的null
@@ -352,7 +426,7 @@ let testMathOperands = (operator, left, right) => {
     if (operator === '+' && !(isNumber(left) && isNumber(right) || isString(left) && isString(right))) {
         throw expectationError('infix: +', 'numbers/strings + numbers/strings');
     }
-    if (['-', '*', '/', '**'].some(v => v === operator) && !(isNumber(left) && isNumber(right))) {
+    if (['-', '*', '/', '**', '%'].some(v => v === operator) && !(isNumber(left) && isNumber(right))) {
         throw expectationError(`infix: ${operator}`, `number ${operator} number`);
     }
     return

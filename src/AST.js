@@ -68,6 +68,15 @@ class Object extends ASTNode {
     }
 }
 
+class Lambda extends ASTNode {
+    constructor(token, params, body) {
+        super(token);
+        this.constructorName = 'Lambda';
+        this.params = params;
+        this.body = body;
+    }
+}
+
 exports.ASTNode = ASTNode;
 exports.BinOp = BinOp;
 exports.UnaryOp = UnaryOp;
@@ -77,3 +86,4 @@ exports.ContextValue = ContextValue;
 exports.ValueAccess = ValueAccess;
 exports.List = List;
 exports.Object = Object;
+exports.Lambda = Lambda;

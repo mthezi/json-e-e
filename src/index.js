@@ -594,6 +594,7 @@ let tokenizer = new Tokenizer({
     number: "[0-9]+(?:\\.[0-9]+)?",
     identifier: "[a-zA-Z_][a-zA-Z_0-9]*",
     string: "'[^']*'|\"[^\"]*\"",
+    arrow: "=>",
     // avoid matching these as prefixes of identifiers e.g., `insinutations`
     true: "true(?![a-zA-Z_0-9])",
     false: "false(?![a-zA-Z_0-9])",
@@ -605,7 +606,7 @@ let tokenizer = new Tokenizer({
     "?.",  // 可选链操作符
     "??",  // 空值合并运算符
     "?",   // 三目运算符的条件部分
-    ..."+-*/[].(){}:,".split(""),
+    ..."+-*/%[].(){}:,".split(""),  // 添加 % 运算符
     ">=",
     "<=",
     "<",
@@ -615,6 +616,7 @@ let tokenizer = new Tokenizer({
     "!",
     "&&",
     "||",
+    "=>",  // 箭头函数
     "true",
     "false",
     "in",
@@ -658,6 +660,10 @@ let parseUntilTerminator = (source, terminator, context) => {
 
 let containsFunctions = (rendered) => {
   if (isFunction(rendered)) {
+    // 如果函数是由 Lambda 表达式创建的，则允许它存在于结果中
+    if (rendered.hasOwnProperty('jsone_builtin') && rendered.jsone_builtin === false) {
+      return false;
+    }
     return true;
   } else if (Array.isArray(rendered)) {
     return rendered.some(containsFunctions);
