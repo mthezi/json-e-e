@@ -71,9 +71,17 @@ class Interpreter {
         
         switch (node.token.kind) {
             case ("||"):
-                return isTruthy(left) || isTruthy(this.visit(node.right));
+                // Corrected logic for OR: return actual value, not boolean
+                if (isTruthy(left)) { 
+                    return left; 
+                }
+                return this.visit(node.right);
             case ("&&"):
-                return isTruthy(left) && isTruthy(this.visit(node.right));
+                // Corrected logic for AND: return actual value, not boolean
+                if (!isTruthy(left)) { 
+                    return left; 
+                }
+                return this.visit(node.right);
             case ("??"):
                 // 当左侧操作数为null或undefined时，返回右侧操作数，否则返回左侧操作数
                 return (left === null || left === undefined || left === OPTIONAL_CHAIN_NULL)

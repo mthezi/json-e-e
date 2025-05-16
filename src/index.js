@@ -506,6 +506,12 @@ operators.$sort = (template, context) => {
 };
 
 let render = (template, context) => {
+  // FIX START: Handle Promise-like objects passed directly as templates
+  if (template && typeof template === 'object' && typeof template.then === 'function') {
+    return template; // Return the promise itself, don't try to render its "keys"
+  }
+  // FIX END
+
   if (isNumber(template) || isBool(template) || template === null) {
     return template;
   }
@@ -572,11 +578,16 @@ let render = (template, context) => {
       // Check if the value of the conditional key is empty
       let isEmpty = false;
       if (isConditionalKey) {
+        // 当值为Promise或其他复杂对象时,我们需要特别处理
+        // 如果值是一个promise,或者一个带有then方法的类promise对象,不应该被视为空
+        let isPromiseLike = value && typeof value === 'object' && typeof value.then === 'function';
+        
         isEmpty =
           value === null ||
+          value === undefined ||
           (isString(value) && value === "") ||
           (isArray(value) && value.length === 0) ||
-          (isObject(value) && Object.keys(value).length === 0);
+          (isObject(value) && !isFunction(value) && !isPromiseLike && Object.keys(value).length === 0);
       }
 
       // If it's not a conditional key or the conditional key has a non-empty value, keep the key-value pair
